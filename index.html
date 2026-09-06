@@ -52,7 +52,7 @@
             <div class="mt-6 text-center">
                 <p class="text-[10px] text-gray-400">
                     <i class="fa-solid fa-info-circle mr-1"></i> 
-                    默认密码哈希对应明文: <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-600">123456</span>
+                    默认密码: <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-600">123456</span>
                 </p>
             </div>
         </div>
@@ -97,7 +97,7 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs"></i>
                     </div>
-                    <input type="text" id="search-input" class="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition shadow-sm" placeholder="搜索标签...">
+                    <input type="text" id="search-input" class="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition shadow-sm" placeholder="搜索标签或备注...">
 
                 </div>
             </div>
@@ -266,7 +266,14 @@ const STORED_HASH = "424b6d4eb6d1347e168e21b6e2c1abaaade138fa10b192537b400519b7f
             
             const filtered = tags.filter(t => {
                 const matchCat = currentFilter === 'all' || t.category === currentFilter;
-                const matchSearch = t.content.toLowerCase().includes(searchVal);
+        //         const matchSearch = t.content.toLowerCase().includes(searchVal);
+// 同时搜索内容和备注，如果备注为空则视为不匹配该字段，避免报错
+const matchContent = t.content.toLowerCase().includes(searchVal);
+const matchNote = t.note && t.note.toLowerCase().includes(searchVal);
+const matchSearch = matchContent || matchNote;
+
+
+
                 return matchCat && matchSearch;
             });
 
