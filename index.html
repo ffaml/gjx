@@ -1,40 +1,42 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TagBox - 临时标签管理 (内存版)</title>
+    <title>TagBox - 安全标签管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 3px; }
         
-        /* 关键修复：默认隐藏遮罩层，防止刷新闪烁 */
+        /* 关键修复：登录遮罩默认隐藏，防止刷新闪烁 */
         #auth-overlay {
             display: none; 
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
         }
-        
-        /* 当添加 show 类时才显示 */
         #auth-overlay.show {
             display: flex;
             opacity: 1;
         }
 
-        .backdrop-blur-custom { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        /* 通用模态框遮罩样式 */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
         .hidden-important { display: none !important; }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen relative overflow-hidden">
 
-    <!-- 1. 密码验证遮罩层 (默认 CSS 隐藏，JS 控制显示) -->
-    <div id="auth-overlay" class="fixed inset-0 z-50 bg-gray-900/80 backdrop-blur-custom items-center justify-center">
+    <!-- 1. 登录验证遮罩 (默认 CSS 隐藏) -->
+    <div id="auth-overlay" class="fixed inset-0 z-50 bg-gray-900/90 backdrop-blur-sm items-center justify-center">
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 fade-in border border-gray-200">
             <div class="text-center mb-6">
                 <div class="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-indigo-50">
@@ -66,13 +68,13 @@
             <div class="mt-6 text-center">
                 <p class="text-[10px] text-gray-400">
                     <i class="fa-solid fa-info-circle mr-1"></i> 
-                    默认密码哈希对应明文: <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-600">123456</span>
+                    默认密码: <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-600">123456</span>
                 </p>
             </div>
         </div>
     </div>
 
-    <!-- 2. 主应用内容 (默认隐藏，验证通过后显示) -->
+    <!-- 2. 主应用内容 (默认隐藏) -->
     <div id="app-content" class="hidden-important flex flex-col min-h-screen w-full">
         <!-- 头部 -->
         <header class="bg-white shadow-sm sticky top-0 z-10 border-b border-gray-100">
@@ -81,7 +83,7 @@
                     <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-md">
                         <i class="fa-solid fa-tags text-sm"></i>
                     </div>
-                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">TagBox <span class="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded-full ml-2">Memory</span></h1>
+                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">TagBox <span class="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded-full ml-2">Secure</span></h1>
                 </div>
                 <div class="flex items-center space-x-3">
                     <button onclick="exportData()" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="导出数据">
@@ -111,7 +113,7 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs"></i>
                     </div>
-                    <input type="text" id="search-input" class="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition shadow-sm" placeholder="搜索标签...">
+                    <input type="text" id="search-input" class="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition shadow-sm" placeholder="搜索标签/备注...">
                 </div>
             </div>
 
@@ -137,26 +139,28 @@
         </footer>
     </div>
 
-    <!-- 模态框 -->
-    <div id="tag-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- 3. 新建/编辑模态框 (带遮罩层) -->
+    <div id="tag-modal" class="fixed inset-0 z-40 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- 遮罩背景：点击此处可关闭 -->
+        <div class="fixed inset-0 modal-backdrop transition-opacity" onclick="closeModal()"></div>
+        
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeModal()"></div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full fade-in relative z-50">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4" id="modal-title">新建标签</h3>
                     <div class="space-y-4">
-                        <input type="text" id="tag-content" class="w-full border rounded px-3 py-2 text-sm" placeholder="标签内容">
-                        <input type="url" id="tag-url" class="w-full border rounded px-3 py-2 text-sm" placeholder="链接 URL (可选)">
+                        <input type="text" id="tag-content" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="标签内容">
+                        <input type="url" id="tag-url" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="链接 URL (可选)">
                         <div class="flex gap-4">
-                            <select id="tag-category" class="w-1/2 border rounded px-3 py-2 text-sm">
+                            <select id="tag-category" class="w-1/2 border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                                 <option value="work">工作</option>
                                 <option value="study">学习</option>
                                 <option value="life">生活</option>
                             </select>
-                            <input type="color" id="tag-color" class="w-1/2 h-9 border rounded p-1" value="#4F46E5">
+                            <input type="color" id="tag-color" class="w-1/2 h-9 border rounded p-1 cursor-pointer" value="#4F46E5">
                         </div>
-                        <textarea id="tag-note" rows="2" class="w-full border rounded px-3 py-2 text-sm" placeholder="备注"></textarea>
+                        <textarea id="tag-note" rows="2" class="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="备注信息 (支持搜索)"></textarea>
                     </div>
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
@@ -167,15 +171,15 @@
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- Toast 提示 -->
     <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 z-50 bg-white border-l-4 border-green-500 shadow-lg rounded p-4 flex items-center">
         <i class="fa-solid fa-check-circle text-green-500 mr-2"></i>
         <span id="toast-message" class="text-sm font-medium">成功</span>
     </div>
 
     <script>
-        // --- 核心安全配置 ---
-        const STORED_HASH = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
+        // --- 核心配置 ---
+        const STORED_HASH = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"; // 123456
         
         let tags = [];
         let currentFilter = 'all';
@@ -186,24 +190,21 @@
             checkAuth();
         });
 
-        // 2. 认证检查 (修复闪烁的核心逻辑)
+        // 2. 认证检查 (防闪烁逻辑)
         function checkAuth() {
             const isAuthed = sessionStorage.getItem('tagbox_auth');
             const overlay = document.getElementById('auth-overlay');
             const appContent = document.getElementById('app-content');
 
             if (isAuthed === 'true') {
-                // 已登录：确保遮罩层不显示，内容显示
                 overlay.classList.remove('show');
                 appContent.classList.remove('hidden-important');
                 loadTags();
                 renderTags();
                 updateStats();
             } else {
-                // 未登录：显示遮罩层，隐藏内容
                 overlay.classList.add('show');
                 appContent.classList.add('hidden-important');
-                // 强制聚焦
                 setTimeout(() => document.getElementById('auth-password').focus(), 50);
             }
         }
@@ -213,8 +214,7 @@
             const msgBuffer = new TextEncoder().encode(message);
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return hashHex;
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
         // 4. 处理登录
@@ -234,7 +234,6 @@
                 if (inputHash === STORED_HASH) {
                     sessionStorage.setItem('tagbox_auth', 'true');
                     errorDiv.classList.add('hidden');
-                    // 登录成功后切换视图
                     const overlay = document.getElementById('auth-overlay');
                     const appContent = document.getElementById('app-content');
                     
@@ -263,9 +262,8 @@
 
         // --- 业务逻辑 ---
         function loadTags() {
-            // 修改点：不再从 localStorage 读取，直接使用内存中的初始数据或空数组
-            // 如果希望每次刷新都有初始数据，可以保留下面的示例数据；如果希望完全空白，改为 tags = []
-            tags = [
+            const stored = localStorage.getItem('tagbox_data');
+            tags = stored ? JSON.parse(stored) : [
                 { id: 1, content: 'Google', url: 'https://google.com', category: 'work', color: '#3B82F6', note: '搜索引擎', createdAt: Date.now() }
             ];
         }
@@ -277,16 +275,13 @@
             
             container.innerHTML = '';
             
+            // 核心修改：增加对 note 和 url 的搜索支持
             const filtered = tags.filter(t => {
                 const matchCat = currentFilter === 'all' || t.category === currentFilter;
-                // 核心修改：增加对 note 和 url 的搜索支持
                 const contentMatch = t.content.toLowerCase().includes(searchVal);
                 const noteMatch = t.note ? t.note.toLowerCase().includes(searchVal) : false;
                 const urlMatch = t.url ? t.url.toLowerCase().includes(searchVal) : false;
-                
-                const matchSearch = contentMatch || noteMatch || urlMatch;
-                
-                return matchCat && matchSearch;
+                return matchCat && (contentMatch || noteMatch || urlMatch);
             });
 
             if (filtered.length === 0) {
@@ -299,7 +294,6 @@
                     const div = document.createElement('div');
                     div.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition group fade-in';
                     const hasUrl = tag.url && tag.url.startsWith('http');
-                    
                     div.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center space-x-3 overflow-hidden">
@@ -361,8 +355,7 @@
             } else {
                 tags.push(newTag);
             }
-            
-            // 修改点：移除 localStorage.setItem，数据仅保存在内存变量 tags 中
+            localStorage.setItem('tagbox_data', JSON.stringify(tags));
             renderTags();
             closeModal();
         }
@@ -381,7 +374,7 @@
         function deleteTag(id) {
             if(confirm('确定删除？')) {
                 tags = tags.filter(t => t.id !== id);
-                // 修改点：移除 localStorage.setItem
+                localStorage.setItem('tagbox_data', JSON.stringify(tags));
                 renderTags();
             }
         }
