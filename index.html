@@ -261,12 +261,12 @@
         }
 
         // --- 业务逻辑 ---
-        function loadTags() {
-            const stored = localStorage.getItem('tagbox_data');
-            tags = stored ? JSON.parse(stored) : [
-                { id: 1, content: 'Google', url: 'https://google.com', category: 'work', color: '#3B82F6', note: '搜索引擎', createdAt: Date.now() }
-            ];
-        }
+        // function loadTags() {
+        //     const stored = localStorage.getItem('tagbox_data');
+        //     tags = stored ? JSON.parse(stored) : [
+        //         { id: 1, content: 'Google', url: 'https://google.com', category: 'work', color: '#3B82F6', note: '搜索引擎', createdAt: Date.now() }
+        //     ];
+        // }
 
         function renderTags() {
             const container = document.getElementById('tags-container');
@@ -355,7 +355,7 @@
             } else {
                 tags.push(newTag);
             }
-            localStorage.setItem('tagbox_data', JSON.stringify(tags));
+           // localStorage.setItem('tagbox_data', JSON.stringify(tags));
             renderTags();
             closeModal();
         }
