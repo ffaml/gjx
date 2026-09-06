@@ -262,7 +262,12 @@
         // --- 业务逻辑 ---
         function loadTags() {
             const stored = localStorage.getItem('tagbox_data');
-            tags = stored ? JSON.parse(stored) : [ { id: 1, content: 'Google', url: 'https://google.com', category: 'work', color: '#3B82F6', note: '搜索引擎', createdAt: Date.now() }];
+            tags = stored ? JSON.parse(stored) : [ 
+              
+                { id: 1, content: 'Google', url: 'https://google.com', category: 'work', color: '#3B82F6', note: '搜索引擎', createdAt: Date.now() },
+                { id: 2, content: '手机app大全', url: 'https://google.com', category: '软件', color: '#3B82F6', note: '喜马拉雅、mt管理器', createdAt: Date.now() },
+                { id: 3, content: '数据库软件', url: 'https://4002681192.share.123pan.cn/123pan/h4tzMh-VsaEd', category: '软件', color: '#3B82F6', note: '数据库11g、数据库10g、数据库19c', createdAt: Date.now() },
+                { id: 4, content: 'PLSQL工具', url: 'https://4002681192.share.123pan.cn/123pan/h4tzMh-QSkEd', category: '软件', color: '#3B82F6', note: 'plsql工具（plsql版本：14和8.0.2）', createdAt: Date.now() }];
         }
 
         function renderTags() {
