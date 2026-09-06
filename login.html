@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagBox Login Module</title>
+    <!-- 引入 TailwindCSS 用于快速样式 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 
+         * 核心修复：防止刷新闪烁 
+         * 默认隐藏遮罩层，只有当 JS 确认未登录并添加 .show 类时才显示
+         */
+        #auth-overlay {
+            display: none; 
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        #auth-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* 主内容区域默认隐藏，验证通过后移除 hidden-important */
+        .hidden-important { display: none !important; }
+        
+        /* 简单的淡入动画 */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen relative overflow-hidden">
+
+    <!-- 1. 登录遮罩层 (Overlay) -->
+    <div id="auth-overlay" class="fixed inset-0 z-50 bg-gray-900/80 backdrop-blur-custom items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 fade-in border border-gray-200">
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-indigo-50">
+                    <i class="fa-solid fa-shield-halved text-2xl text-indigo-600"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900">安全访问验证</h2>
+                <p class="text-gray-500 mt-1 text-xs">请输入管理员密码解锁系统</p>
+            </div>
+            
+            <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-lock text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                    </div>
+                    <input type="password" id="auth-password" 
+                           class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all sm:text-sm" 
+                           placeholder="输入密码..." autocomplete="current-password" autofocus>
+                </div>
+                
+                <div id="auth-error" class="text-red-500 text-xs text-center hidden flex items-center justify-center">
+                    <i class="fa-solid fa-circle-exclamation mr-1"></i> 密码错误，请重试
+                </div>
+
+                <button type="submit" id="auth-btn" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95">
+                    立即解锁
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-[10px] text-gray-400">
+                    <i class="fa-solid fa-info-circle mr-1"></i> 
+                    默认密码: <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-600">123456</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 主应用内容 (初始隐藏) -->
+    <div id="app-content" class="hidden-important flex flex-col min-h-screen w-full items-center justify-center">
+        <div class="text-center">
+          <!--  <h1 class="text-3xl font-bold text-indigo-600 mb-4">欢迎回来！</h1>
+              <p class="text-gray-600 mb-6">您已成功通过身份验证。</p>
+              <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg shadow transition">
+                  <i class="fa-solid fa-right-from-bracket mr-2"></i>退出登录 
+<a href='./index.html'></a>-->
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- 配置区 ---
+        // SHA-256 Hash of "123456"
+        const STORED_HASH = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
+
+        // --- 核心逻辑 ---
+
+        // 1. 页面加载时立即检查状态
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+        });
+
+        // 2. 认证状态检查 (防闪烁关键)
+        function checkAuth() {
+            const isAuthed = sessionStorage.getItem('tagbox_auth');
+            const overlay = document.getElementById('auth-overlay');
+            const appContent = document.getElementById('app-content');
+
+            if (isAuthed === 'true') {
+                // 已登录：确保遮罩层隐藏，内容显示
+                overlay.classList.remove('show');
+                appContent.classList.remove('hidden-important');
+            } else {
+                // 未登录：显示遮罩层，隐藏内容
+                overlay.classList.add('show');
+                appContent.classList.add('hidden-important');
+                // 聚焦输入框提升体验
+                setTimeout(() => document.getElementById('auth-password').focus(), 50);
+            }
+        }
+
+        // 3. SHA-256 哈希计算函数
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        // 4. 处理登录提交
+        async function handleAuth(e) {
+            e.preventDefault();
+            const inputPwd = document.getElementById('auth-password').value;
+            const errorDiv = document.getElementById('auth-error');
+            const btn = document.getElementById('auth-btn');
+            
+            // UI 反馈：加载中
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+            btn.disabled = true;
+
+            // 计算输入密码的哈希
+            const inputHash = await sha256(inputPwd);
+
+            // 模拟网络延迟（可选，增加真实感）
+            setTimeout(async () => {
+                if (inputHash === STORED_HASH) {
+                       
+            // 跳转到主界面
+      sessionStorage.setItem('tagbox_auth', 'true');
+                    errorDiv.classList.add('hidden');
+            window.location.href = 'index.html';
+        } else {
+                    // 登录失败
+                    errorDiv.classList.remove('hidden');
+                    document.getElementById('auth-password').value = '';
+                    document.getElementById('auth-password').focus();
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            }, 300);
+        }
+
+        // 5. 退出登录
+        function logout() {
+            sessionStorage.removeItem('tagbox_auth');
+            location.reload(); // 刷新页面重置状态
+        }
+    </script>
+</body>
+</html>
